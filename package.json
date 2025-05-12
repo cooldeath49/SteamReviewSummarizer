@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "mongodb": "^6.16.0",
+    "node": "^24.0.1",
+    "openai": "^4.98.0",
+    "steamapi": "^3.1.1"
+  }
+}
