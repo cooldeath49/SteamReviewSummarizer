@@ -1,5 +1,19 @@
+//Import express, path, and set rt
+const express = require("express")
+const path = require("path");
+const app = express();
+const port = 5000;
+//Set view engine
+app.set("view engine", "ejs");
+
+//Set directory to pages
+app.set("views", path.resolve(__dirname, "../pages"));
+app.use(express.static("public"));
+
+//regexp pattern for extracting app id and name
 const pattern = /https:\/\/store.steampowered.com\/app\/(\d+)\/([^]+)/i;
 
+//clicked function
 function clicked() {
     let url = document.getElementById("in").value;
     if (url) {
@@ -15,3 +29,12 @@ function clicked() {
         window.alert("Please enter a URL");
     }
 }
+
+//default home page
+app.get("/", (req, res) => {
+    console.log("rendered home page");
+    res.render("index");
+})
+//Listen on given port
+app.listen(port);
+console.log("Server started on port " + port);
