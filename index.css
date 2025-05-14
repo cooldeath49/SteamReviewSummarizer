@@ -1,0 +1,31 @@
+body {
+    font-family: Helvetica;
+    background-color: #1B2838;
+    color: #dddddd;
+    margin-top: 0;
+    margin: 0px;
+}
+
+h1 {
+    margin: auto;
+    color: #e0e0e0d7;
+}
+
+.title {
+    text-align: center;
+    font-size: 1rem;
+    background-color: #0B1016;
+    margin: auto;
+    display: flex;
+    
+    height: 3rem;
+}
+
+.subtitle {
+    margin: 0;
+}
+
+.main {
+    padding: 1rem;
+    
+}
