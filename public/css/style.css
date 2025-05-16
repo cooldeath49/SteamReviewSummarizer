@@ -21,11 +21,91 @@ h1 {
     height: 3rem;
 }
 
+.desc_div {
+    text-align: center;
+    text-wrap: wrap;
+    width: 50rem;
+    margin: auto;
+    color: #6c7b8b;
+}
+
+.dev {
+    color: #dddddd;
+}
+
+.game_title {
+    font-size: 3rem;
+    margin: 0;
+    text-align: center;
+}
 .subtitle {
     margin: 0;
+    text-align: center;
 }
+
 
 .main {
     padding: 1rem;
     
+}
+
+.game_img {
+    display: block;
+    margin: auto;
+    width: 50rem;
+}
+
+.fade {
+    animation-name: fade-in;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+
+}
+
+.graph_reviews {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin: auto;
+    height: 20rem;
+    
+    width: 50rem;
+    /* border: 1rem solid #141e29; */
+}
+
+.reviews {
+    font-size: 1rem;
+    padding:1rem;
+    padding-top: 0.5rem;
+    background-color: #141e29;
+    color: #6c7b8b;
+    line-height: 1.25rem;
+    width: calc(50% - 3rem);
+    
+}
+
+.stats {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    color: #dddddd;
+}
+
+.iframe_div {
+    width: 50%;
+    background-color: #141e29;
+}
+
+.iframe {
+    border:0;overflow:hidden;
+    width: 100%;
+    height: 100%;
+}
+
+
+
+
+/* The animation code */
+@keyframes fade-in {
+  from {opacity: 0}
+  to {opacity: 1;}
 }

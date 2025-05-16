@@ -33,8 +33,10 @@ function clicked() {
 //default home page
 app.get("/", (req, res) => {
     console.log("rendered home page");
-    res.render("index");
+    // res.render("index");
+    res.render("display");
 })
+
 //Listen on given port
 app.listen(port);
 console.log("Server started on port " + port);
