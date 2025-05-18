@@ -2,28 +2,31 @@ const path = require("path");
 const express= require("express");
 const app = express();
 const { MongoClient, ServerApiVersion } = require("mongodb");
+const { OpenAI } = require("openai");
 require("dotenv").config({
     path: path.resolve(__dirname, ".env"),
 });
 
-// mongoDB init - make it optional
+
+
+// mongoDB init
 let client, database, collection;
 const databaseName = "MainDB";
 const collectionName = "GameInfo";
 const uri = process.env.MONGO_CONNECTION_STRING;
-
-// Only initialize MongoDB if we have a connection string
-if (uri) {
-    client = new MongoClient(uri, { serverApi: ServerApiVersion.v1 });
-    database = client.db(databaseName);
-    collection = database.collection(collectionName);
-}
+client = new MongoClient(uri, { serverApi: ServerApiVersion.v1 });
+database = client.db(databaseName);
+collection = database.collection(collectionName);
 
 const portNumber = 3000;
 
 app.use(express.urlencoded({ extended: false }));
 
 // openai init
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API
+});
+
 const API_URL = 'https://api.openai.com/v1/chat/completions';
 const API_KEY = process.env.OPENAI_API;
 var prompt =
@@ -34,11 +37,12 @@ var prompt =
     Below are the given information
     Game: $gameName$,
     Tags: $gameTags$,
+    Description: $gameDescription$,
     Rating: $gameRating$,
     Number of Pos Reviews: $numPosReviews$,
     Number of Neg Reviews: $numNegReviews$,
     Most Helpful Reviews: $mostHelpfulReviews$,
-    Past 30 Days Reviews: $recentReivews$`;
+    Past 30 Days Reviews: $recentReviews$`;
 
 // ejs
 app.set("view engine", "ejs");
@@ -60,15 +64,17 @@ app.post("/display", (request, response) => {
     } else {
         const info = getGameInfo(appid);
         const summary = summarizeReviews(info);
-        insert(info.gameName, info.gameTags, info.gameRating, info.numPosReviews, info.numNegReviews, summary);
         finalInfo = {
             gameId: appid,
             gameName: info.gameName,
             gameTags: info.gameTags,
+            gameDescription: info.gameDescription,
+            gameRating: info.gameRating,
             numPosReviews: info.numPosReviews,
             numNegReviews: info.numNegReviews,
             summary: summary,
         }
+        insert(finalInfo);
     }
 
     const variables = {
@@ -106,50 +112,44 @@ process.stdin.on('readable', () => {
 });
 
 // insert
-async function insert(name, tags, rating, numPosReviews, numNegReviews, reviewSummary){
+async function insert(gameInfo) {
     try {
         await client.connect();
-        /* Inserting one movie */
         const game = {
-            gameName: name,
-            gameTags: tags,
-            numPosReviews: numPosReviews,
-            numNegReviews: numNegReviews,
-            summary: reviewSummary,
-            time: new Date()
+            gameId: gameInfo.gameId,
+            gameName: gameInfo.gameName,
+            gameTags: gameInfo.gameTags,
+            gameDescription: gameInfo.gameDescription,
+            gameRating: gameInfo.gameRating,
+            numPosReviews: gameInfo.numPosReviews,
+            numNegReviews: gameInfo.numNegReviews,
+            summary: gameInfo.summary,
+            timestamp: Date.now() // Store current timestamp in milliseconds
         };
 
         let result = await collection.insertOne(game);
-        console.log(`insert id: ${result.insertedId}`);
+        console.log(`Successfully inserted game with id: ${result.insertedId}`);
         return result;
     } catch (e) {
-        console.error(e);
+        console.error('Error inserting to database:', e);
+        return null;
     } finally {
         await client.close();
     }
 }
 
-// too lazy to write two seperate functions lol
 async function lookupDB(appid) {
     let result;
     try {
         await client.connect();
         console.log(`looking up: email='${email}', gpa=${gpa}`);
 
-        if (email && email.length > 0) {
-            const filter = { emailAddress: email };
-            console.log("filter:", filter);
-            result = await collection.findOne(filter);
-            console.log("findOne result:", result);
-        } else if (gpa > 0) {
-            const filter = { gpa: { $gte: gpa } };
-            console.log("filter:", filter);
-            const cursor = collection.find(filter);
-            result = await cursor.toArray();
-            console.log("find result (array):", result);
-        } else {
-            console.log("no email or positive gpa");
-        }
+        const filter = { appid: { $gte: gpa } };
+        console.log("filter:", filter);
+        const cursor = collection.find(filter);
+        result = await cursor.toArray();
+        console.log("find result (array):", result);
+
 
         return result;
     } catch (e) {
@@ -162,16 +162,53 @@ async function lookupDB(appid) {
 
 // check if DB already have this game and is updated within 30 days
 async function exist(appid) {
-    let result;
+    try {
+        await client.connect();
+        console.log(`Checking existence for appid: ${appid}`);
+
+        // Calculate timestamp for 30 days ago
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000); // 30 days in milliseconds
+        
+        // First, clean up old entries (older than 30 days)
+        const deleteResult = await collection.deleteMany({
+            timestamp: { $lt: thirtyDaysAgo }
+        });
+        
+        if (deleteResult.deletedCount > 0) {
+            console.log(`Cleaned up ${deleteResult.deletedCount} old entries`);
+        }
+
+        // Then check if the game exists
+        const game = await collection.findOne({ gameId: appid });
+        
+        if (game) {
+            console.log(`Found existing entry for game: ${game.gameName}`);
+            // Calculate age of the entry
+            const ageInDays = Math.floor((Date.now() - game.timestamp) / (24 * 60 * 60 * 1000));
+            console.log(`Entry age: ${ageInDays} days`);
+            return {
+                ...game,
+                ageInDays
+            };
+        } else {
+            console.log(`No existing entry found for appid: ${appid}`);
+            return null;
+        }
+    } catch (e) {
+        console.error("Error in exist():", e);
+        return null;
+    } finally {
+        await client.close();
+    }
 }
 
 async function getGameInfo(appid) {
     try {
-        // Step 1: Fetch game details (name, tags, and description)
+        // get game details (name, tags, and description)
         const appDetailsResponse = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appid}`);
         const appDetailsData = await appDetailsResponse.json();
 
-        // Check if the request was successful
+        // check if appid is valid
         if (!appDetailsData[appid].success) {
             throw new Error('Invalid appid or app not found');
         }
@@ -181,7 +218,7 @@ async function getGameInfo(appid) {
         const gameTags = gameData.genres.map(genre => genre.description); // Genres as tags
         const gameDescription = gameData.short_description || gameData.detailed_description || 'No description available';
 
-        // Step 2: Fetch most helpful reviews (30 reviews)
+        // get most helpful reviews (30)
         const helpfulReviewsResponse = await fetch(
             `https://store.steampowered.com/appreviews/${appid}?json=1&filter=all&language=all&num_per_page=30`
         );
@@ -196,12 +233,12 @@ async function getGameInfo(appid) {
         const numNegReviews = querySummary.total_negative;
         const gameRating = querySummary.review_score_desc; // e.g., "Very Positive"
 
-        // Filter out short reviews (less than 20 characters)
+        // remove short reviews
         const mostHelpfulReviews = helpfulReviewsData.reviews.filter(review =>
             review.review && review.review.length > 20
         );
 
-        // Step 3: Fetch recent reviews (20 reviews)
+        // get recent reviews (20)
         const recentReviewsResponse = await fetch(
             `https://store.steampowered.com/appreviews/${appid}?json=1&filter=recent&language=all&num_per_page=20`
         );
@@ -211,12 +248,11 @@ async function getGameInfo(appid) {
             throw new Error('Failed to fetch recent reviews');
         }
 
-        // Filter out short reviews (less than 20 characters)
+        // remove short reviews
         const recentReviews = recentReviewsData.reviews.filter(review =>
             review.review && review.review.length > 20
         );
 
-        // Return all requested information
         return {
             gameName,
             gameTags,
@@ -233,21 +269,33 @@ async function getGameInfo(appid) {
     }
 }
 
-async function summarizeReviews(prompt) {
+async function summarizeReviews(prompt, gameInfo) {
     try {
-        const response = await openai.responses.create({
-            model: "o4-mini",
-            reasoning: { effort: "medium" },
-            input: [
+        // Replace placeholders with actual values
+        const filledPrompt = prompt
+            .replace("$gameName$", gameInfo.gameName)
+            .replace("$gameTags$", gameInfo.gameTags.join(', '))
+            .replace("$gameDescription$", gameInfo.gameDescription)
+            .replace("$gameRating$", gameInfo.gameRating)
+            .replace("$numPosReviews$", gameInfo.numPosReviews)
+            .replace("$numNegReviews$", gameInfo.numNegReviews)
+            .replace("$mostHelpfulReviews$", JSON.stringify(gameInfo.mostHelpfulReviews))
+            .replace("$recentReviews$", JSON.stringify(gameInfo.recentReviews));
+
+        const response = await openai.chat.completions.create({
+            model: "gpt-4.1-nano",
+            messages: [
                 {
                     role: "user",
-                    content: prompt,
+                    content: filledPrompt,
                 },
             ],
         });
-        return response.data.choices[0].message.content;
+
+        return response.choices[0].message.content;
     } catch (error) {
-        console.error("Error calling ChatGPT API:", error.response ? error.response.data : error.message);
+        console.error("Error calling ChatGPT API:", error);
+        throw error;
     }
 }
 
@@ -255,7 +303,7 @@ async function testGetGameInfo(appid) {
     try {
         console.log(`Testing getGameInfo with appid: ${appid}`);
         const gameInfo = await getGameInfo(appid);
-
+        
         console.log('\n=== Game Information ===');
         console.log(`Game Name: ${gameInfo.gameName}`);
         console.log(`Game Tags: ${gameInfo.gameTags.join(', ')}`);
@@ -263,7 +311,7 @@ async function testGetGameInfo(appid) {
         console.log(`Game Description: ${gameInfo.gameDescription}`);
         console.log(`Positive Reviews: ${gameInfo.numPosReviews}`);
         console.log(`Negative Reviews: ${gameInfo.numNegReviews}`);
-
+        
         console.log('\n=== Most Helpful Reviews ===');
         console.log(`Number of helpful reviews (after filtering): ${gameInfo.mostHelpfulReviews.length}`);
         gameInfo.mostHelpfulReviews.forEach((review, index) => {
@@ -272,7 +320,7 @@ async function testGetGameInfo(appid) {
             console.log(`Review: ${review.review}`);
             console.log(`Playtime: ${review.author.playtime_forever} hours`);
         });
-
+        
         console.log('\n=== Recent Reviews ===');
         console.log(`Number of recent reviews (after filtering): ${gameInfo.recentReviews.length}`);
         gameInfo.recentReviews.forEach((review, index) => {
@@ -282,6 +330,29 @@ async function testGetGameInfo(appid) {
             console.log(`Playtime: ${review.author.playtime_forever} hours`);
         });
 
+        console.log('\n=== GPT Summarize ===');
+        const summary = await summarizeReviews(prompt, gameInfo);
+        console.log(summary);
+        
+        console.log('\n==== Inserting to DB ===');
+        const finalInfo = {
+            gameId: appid,
+            ...gameInfo,
+            summary
+        };
+        await insert(finalInfo);
+        
+        console.log('\n==== Fetching from DB ===');
+        const dbEntry = await exist(appid);
+        if (dbEntry) {
+            console.log('Database Entry:');
+            console.log(`Game: ${dbEntry.gameName}`);
+            console.log(`Age: ${dbEntry.ageInDays} days`);
+            console.log(`Summary: ${dbEntry.summary}`);
+        } else {
+            console.log('No database entry found');
+        }
+        
     } catch (error) {
         console.error('Test failed:', error.message);
     }
