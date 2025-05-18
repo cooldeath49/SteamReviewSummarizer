@@ -84,7 +84,7 @@ h1 {
     
 }
 
-.stats {
+.stats, .summary_title {
     font-size: 1.5rem;
     line-height: 2rem;
     color: #dddddd;
@@ -101,6 +101,23 @@ h1 {
     height: 100%;
 }
 
+.summary {
+    display: flex;
+    flex-direction: column;
+    margin: auto;
+    padding: 1rem;
+    padding-top: 0.5rem;
+    height: 20rem;
+    width: calc(50rem - 2rem);
+    background-color: #141e29;
+    line-height: 1.25rem;
+}
+
+.summary_text {
+    color: #6c7b8b;
+    line-height: 2rem;
+    font-size: 1.5rem;
+}
 
 
 
