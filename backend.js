@@ -6,14 +6,20 @@ require("dotenv").config({
     path: path.resolve(__dirname, ".env"),
 });
 
-// mongoDB init
+// mongoDB init - make it optional
+let client, database, collection;
 const databaseName = "MainDB";
-const collectionName = "GameInfo"
+const collectionName = "GameInfo";
 const uri = process.env.MONGO_CONNECTION_STRING;
-const client = new MongoClient(uri, { serverApi: ServerApiVersion.v1 });
-const database = client.db(databaseName);
-const collection = database.collection(collectionName);
-const portNumber = 3001;
+
+// Only initialize MongoDB if we have a connection string
+if (uri) {
+    client = new MongoClient(uri, { serverApi: ServerApiVersion.v1 });
+    database = client.db(databaseName);
+    collection = database.collection(collectionName);
+}
+
+const portNumber = 3000;
 
 app.use(express.urlencoded({ extended: false }));
 
@@ -22,16 +28,17 @@ const API_URL = 'https://api.openai.com/v1/chat/completions';
 const API_KEY = process.env.OPENAI_API;
 var prompt =
     `Your mission is to to summarize the reviews about this game. Make sure to use clear, accurate, not overly analytical tone,
-    and pay attention for any changes between most recent reviews and most helpful reviews. Your output should only contain
-    the result as raw text (no markdown) and nothing else. STRICTLY FOLLOW THESE RULES.
+    and pay attention for any changes between most recent reviews and most helpful reviews. 
+    Ignore the reviews that don't provide related information
+    Your output should only contain the result as raw text (no markdown) and nothing else. STRICTLY FOLLOW THESE RULES.
     Below are the given information
-    Game: ${gameName},
-    Tags: ${gameTags},
-    Rating: ${gameRating},
-    Number of Pos Reviews: ${numPosReviews},
-    Number of Neg Reviews: ${numNegReviews},
-    Most Helpful Reviews: ${mostHelpfulReviews},
-    Past 30 Days Reviews: ${recentReivews}`;
+    Game: $gameName$,
+    Tags: $gameTags$,
+    Rating: $gameRating$,
+    Number of Pos Reviews: $numPosReviews$,
+    Number of Neg Reviews: $numNegReviews$,
+    Most Helpful Reviews: $mostHelpfulReviews$,
+    Past 30 Days Reviews: $recentReivews$`;
 
 // ejs
 app.set("view engine", "ejs");
@@ -99,19 +106,20 @@ process.stdin.on('readable', () => {
 });
 
 // insert
-async function insert(name, tags, rating, numOfPosReviews, numOfNegReviews, reviewSummary){
+async function insert(name, tags, rating, numPosReviews, numNegReviews, reviewSummary){
     try {
         await client.connect();
         /* Inserting one movie */
-        const applicant = {
-            applicantName: name,
-            emailAddress: email,
-            gpa: gpa,
-            backgroundInfo: info,
+        const game = {
+            gameName: name,
+            gameTags: tags,
+            numPosReviews: numPosReviews,
+            numNegReviews: numNegReviews,
+            summary: reviewSummary,
             time: new Date()
         };
 
-        let result = await collection.insertOne(applicant);
+        let result = await collection.insertOne(game);
         console.log(`insert id: ${result.insertedId}`);
         return result;
     } catch (e) {
@@ -159,7 +167,7 @@ async function exist(appid) {
 
 async function getGameInfo(appid) {
     try {
-        // Step 1: Fetch game details (name and tags)
+        // Step 1: Fetch game details (name, tags, and description)
         const appDetailsResponse = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appid}`);
         const appDetailsData = await appDetailsResponse.json();
 
@@ -171,8 +179,9 @@ async function getGameInfo(appid) {
         const gameData = appDetailsData[appid].data;
         const gameName = gameData.name;
         const gameTags = gameData.genres.map(genre => genre.description); // Genres as tags
+        const gameDescription = gameData.short_description || gameData.detailed_description || 'No description available';
 
-        // Step 2: Fetch most helpful reviews and review statistics
+        // Step 2: Fetch most helpful reviews (30 reviews)
         const helpfulReviewsResponse = await fetch(
             `https://store.steampowered.com/appreviews/${appid}?json=1&filter=all&language=all&num_per_page=30`
         );
@@ -186,11 +195,15 @@ async function getGameInfo(appid) {
         const numPosReviews = querySummary.total_positive;
         const numNegReviews = querySummary.total_negative;
         const gameRating = querySummary.review_score_desc; // e.g., "Very Positive"
-        const mostHelpfulReviews = helpfulReviewsData.reviews;
 
-        // Step 3: Fetch recent reviews (past 30 days)
+        // Filter out short reviews (less than 20 characters)
+        const mostHelpfulReviews = helpfulReviewsData.reviews.filter(review =>
+            review.review && review.review.length > 20
+        );
+
+        // Step 3: Fetch recent reviews (20 reviews)
         const recentReviewsResponse = await fetch(
-            `https://store.steampowered.com/appreviews/${appid}?json=1&filter=all&day_range=30&language=all&num_per_page=20`
+            `https://store.steampowered.com/appreviews/${appid}?json=1&filter=recent&language=all&num_per_page=20`
         );
         const recentReviewsData = await recentReviewsResponse.json();
 
@@ -198,12 +211,16 @@ async function getGameInfo(appid) {
             throw new Error('Failed to fetch recent reviews');
         }
 
-        const recentReviews = recentReviewsData.reviews;
+        // Filter out short reviews (less than 20 characters)
+        const recentReviews = recentReviewsData.reviews.filter(review =>
+            review.review && review.review.length > 20
+        );
 
         // Return all requested information
         return {
             gameName,
             gameTags,
+            gameDescription,
             gameRating,
             numPosReviews,
             numNegReviews,
@@ -234,8 +251,49 @@ async function summarizeReviews(prompt) {
     }
 }
 
+async function testGetGameInfo(appid) {
+    try {
+        console.log(`Testing getGameInfo with appid: ${appid}`);
+        const gameInfo = await getGameInfo(appid);
+
+        console.log('\n=== Game Information ===');
+        console.log(`Game Name: ${gameInfo.gameName}`);
+        console.log(`Game Tags: ${gameInfo.gameTags.join(', ')}`);
+        console.log(`Game Rating: ${gameInfo.gameRating}`);
+        console.log(`Game Description: ${gameInfo.gameDescription}`);
+        console.log(`Positive Reviews: ${gameInfo.numPosReviews}`);
+        console.log(`Negative Reviews: ${gameInfo.numNegReviews}`);
+
+        console.log('\n=== Most Helpful Reviews ===');
+        console.log(`Number of helpful reviews (after filtering): ${gameInfo.mostHelpfulReviews.length}`);
+        gameInfo.mostHelpfulReviews.forEach((review, index) => {
+            console.log(`\nReview ${index + 1}:`);
+            console.log(`Voted Up: ${review.voted_up}`);
+            console.log(`Review: ${review.review}`);
+            console.log(`Playtime: ${review.author.playtime_forever} hours`);
+        });
+
+        console.log('\n=== Recent Reviews ===');
+        console.log(`Number of recent reviews (after filtering): ${gameInfo.recentReviews.length}`);
+        gameInfo.recentReviews.forEach((review, index) => {
+            console.log(`\nReview ${index + 1}:`);
+            console.log(`Voted Up: ${review.voted_up}`);
+            console.log(`Review: ${review.review}`);
+            console.log(`Playtime: ${review.author.playtime_forever} hours`);
+        });
+
+    } catch (error) {
+        console.error('Test failed:', error.message);
+    }
+}
+
+// Test the getGameInfo function directly
 (async () => {
-    const response = await getChatResponse("What is ChatGPT?");
-    console.log("ChatGPT Response:", response);
+    try {
+        // Test with Counter-Strike 2
+        await testGetGameInfo('730');
+    } catch (error) {
+        console.error('Test failed:', error);
+    }
 })();
 
