@@ -1,6 +1,7 @@
 const path = require("path");
 const express= require("express");
 const app = express();
+const router = express.Router(); //somewhere along the top
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { OpenAI } = require("openai");
 const portNumber = 3000;
@@ -72,12 +73,9 @@ app.get("/", (request, response) => {
     console.log("rendering index page");
 });
 
-// display page
-
-/* Initializes request.body with post information */ 
-app.use(bodyParser.urlencoded({extended:false}));
-
-app.post("/display", async (request, response) => {
+// display page related router setup
+router.use(bodyParser.urlencoded({ extended: false })); // $Changed$
+router.post("/", async (request, response) => { // $Changed$
     console.log("received display post");
     let appid = Number(pattern.exec(request.body.in)[1]);
 
@@ -96,22 +94,29 @@ app.post("/display", async (request, response) => {
             numPosReviews: info.numPosReviews,
             numNegReviews: info.numNegReviews,
             summary: summary,
+            timestamp: Date.now()
         }
         insert(finalInfo);
     }
 
+    const totalReviews = parseInt(finalInfo.numPosReviews) + parseInt(finalInfo.numNegReviews);
+    const upvotePercentage = totalReviews > 0 ? Math.floor((parseInt(finalInfo.numPosReviews) / totalReviews) * 100) : 0;
     const variables = {
-        gameId: appid,
+        appid: appid,
         gameName: finalInfo.gameName,
         gameTags: finalInfo.gameTags,
+        gameDescription: finalInfo.gameDescription,
+        totalReviews: totalReviews,
         numPosReviews: finalInfo.numPosReviews,
         numNegReviews: finalInfo.numNegReviews,
+        upvotePercentage: upvotePercentage,
         summary: finalInfo.summary,
     }
 
-    // response.render('display', variables);
-    response.render('display');
+    response.render('display', variables);
 })
+
+app.use("/display", router);
 
 app.listen(portNumber);
 console.log(`Web server started and running at localhost:${portNumber}\n`);
@@ -359,7 +364,7 @@ async function testGetGameInfo(appid) {
     }
 }
 
-// test 
+// test
 
 // (async () => {
 //     try {

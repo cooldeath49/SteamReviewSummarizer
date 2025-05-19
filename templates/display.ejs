@@ -12,41 +12,42 @@
     <body>
         <div class="title"><h1>STEAM REVIEW SUMMARIZER</h1></div>
         <div class="main">
-            <h1 class="game_title fade">R.E.P.O.</h1>
+            <h1 class="game_title fade"><%- gameName %></h1>
             <br>
-            <img class="game_img fade" src="https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3241660/1ea445e044a2d5b09cfa8291350b63ebed6e5741/header.jpg?t=1743517226" alt="Game front page image">
-
+            <img class="game_img fade" src="https://cdn.akamai.steamstatic.com/steam/apps/<%= appid %>/header.jpg" alt="Game front page image">
             <br>
             <div class="desc_div"><i>
-                <span class="desc">"An online co-op horror game with up to 6 players. Locate valuable, fully physics-based objects and handle them with care as you retrieve and extract to satisfy your creator's desires."</span>
+                <span class="desc"><%- gameDescription %></span>
                 <br></i>
-                <span class="dev">- Developer's description</span>
+                <span class="dev"><%- gameTags %></span>
             </div>
             
             <br>
             <div class="graph_reviews">
                 <div class="reviews">
                     <div class="stats"><b>STATISTICS</b></div>
-                    TOTAL REVIEWS (30 days): 145
-                    <br>
-                    POSITIVE REVIEWS (30 days): 143
-                    <br>
-                    NEGATIVE REVIEWS (30 days): 2
+                    TOTAL REVIEWS: <%- totalReviews %>
                     <br>
                     <br>
-                    RELEASE DATE: Feb 26, 2025
+                    Positive: <%- numPosReviews %>
                     <br>
-                    PUBLISHER: Rimwork
+                    <br>
+                    Negative: <%- numNegReviews %>
+                    <br>
+                    <br>
+                    Upvote Percentage: <%- upvotePercentage %>%
+                    <br>
+                    <br>
                 </div>
                 <div class="iframe_div">
-                    <iframe src="https://steamdb.info/embed/?appid=3241660" loading="lazy" class="iframe"></iframe>
+                    <iframe src="https://steamdb.info/embed/?appid=<%- appid %>" loading="lazy" class="iframe"></iframe>
                 </div>
             </div>
             <br>
             <div class="summary">
                 <div class="summary_title"><b>SUMMARY</b></div>
                 <div class="summary_text">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                    <%- summary %>
                 </div>
             </div>
 
