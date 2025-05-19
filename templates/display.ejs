@@ -28,15 +28,11 @@
                     <div class="stats"><b>STATISTICS</b></div>
                     TOTAL REVIEWS: <%- totalReviews %>
                     <br>
-                    <br>
                     Positive: <%- numPosReviews %>
-                    <br>
                     <br>
                     Negative: <%- numNegReviews %>
                     <br>
-                    <br>
                     Upvote Percentage: <%- upvotePercentage %>%
-                    <br>
                     <br>
                 </div>
                 <div class="iframe_div">
@@ -50,6 +46,9 @@
                     <%- summary %>
                 </div>
             </div>
+            <form action= <%- domain %> method="get">
+            <input type="submit" value="Back" id="back">
+            </form>
 
         </div>
 

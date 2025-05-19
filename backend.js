@@ -66,7 +66,10 @@ router.post("/", async (request, response) => { // $Changed$
     // first get the info of this game
     if (!finalInfo) {
         const info = await getGameInfo(appid);
-        console.log(info);
+        if (!info) {
+            response.render("notfound", {domain: domain});
+        } else {
+
         const summary = await summarizeReviews(prompt, info);
         finalInfo = {
             gameId: appid,
@@ -80,6 +83,8 @@ router.post("/", async (request, response) => { // $Changed$
             timestamp: Date.now()
         }
         insert(finalInfo);
+
+        }
     }
 
     const totalReviews = parseInt(finalInfo.numPosReviews) + parseInt(finalInfo.numNegReviews);
@@ -256,7 +261,7 @@ async function getGameInfo(appid) {
         };
     } catch (error) {
         console.error('Error fetching game info:', error);
-        throw error;
+        return null;
     }
 }
 

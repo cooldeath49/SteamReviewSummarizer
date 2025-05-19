@@ -42,7 +42,7 @@ input[type="text"] {
     color: #ffffff;
 }
 
-input[type="submit"] {
+input[type="submit"], input[type="button"] {
     padding: 10px 20px;
     background-color: #66c0f4;
     color: #ffffff;
@@ -95,11 +95,15 @@ input[type="submit"]:hover {
     border-radius: 5px;
     flex: 1;
     margin-right: 20px;
+    font-size: 1.35rem;
+    line-height: 1.75rem;
 }
 
 .stats {
     color: #66c0f4;
     margin-bottom: 10px;
+    font-size: 2rem;
+    line-height: 2.5rem;
 }
 
 .iframe_div {
