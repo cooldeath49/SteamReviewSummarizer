@@ -3,11 +3,12 @@ const express= require("express");
 const app = express();
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { OpenAI } = require("openai");
+const portNumber = 3000;
+
+app.use(express.urlencoded({ extended: false }));
 require("dotenv").config({
     path: path.resolve(__dirname, ".env"),
 });
-
-
 
 // mongoDB init
 let client, database, collection;
@@ -18,17 +19,11 @@ client = new MongoClient(uri, { serverApi: ServerApiVersion.v1 });
 database = client.db(databaseName);
 collection = database.collection(collectionName);
 
-const portNumber = 3000;
-
-app.use(express.urlencoded({ extended: false }));
-
 // openai init
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API
 });
 
-const API_URL = 'https://api.openai.com/v1/chat/completions';
-const API_KEY = process.env.OPENAI_API;
 var prompt =
     `Your mission is to to summarize the reviews about this game. Make sure to use clear, accurate, not overly analytical tone,
     and pay attention for any changes between most recent reviews and most helpful reviews. 
@@ -46,7 +41,28 @@ var prompt =
 
 // ejs
 app.set("view engine", "ejs");
-app.set("views", path.resolve(__dirname, 'templates'));
+app.set("views", path.resolve(__dirname, "templates"));
+app.use(express.static(path.resolve(__dirname, "public")));
+
+// regexp pattern for extracting app id and name
+const pattern = /https:\/\/store.steampowered.com\/app\/(\d+)\/([^]+)/i;
+
+// clicked function
+function clicked() {
+    let url = document.getElementById("in").value;
+    if (url) {
+        let results = pattern.exec(url);
+        if (results) {
+            let appid = Number(results[1]);
+            let title = results[2];
+            console.log("AppId: " + appid + ", title: " + title);
+        } else {
+            window.alert("Please enter a url of the form: let pattern = https://store.steampowered.com/app/app-id-here/app-name-here")
+        }
+    } else {
+        window.alert("Please enter a URL");
+    }
+}
 
 // homepage
 app.get("/", (request, response) => {
@@ -166,24 +182,24 @@ async function exist(appid) {
         await client.connect();
         console.log(`Checking existence for appid: ${appid}`);
 
-        // Calculate timestamp for 30 days ago
+        // calculate the timestamp for 30 days ago
         const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000); // 30 days in milliseconds
-        
-        // First, clean up old entries (older than 30 days)
+
+        // clean up old entries (older than 30 days)
         const deleteResult = await collection.deleteMany({
             timestamp: { $lt: thirtyDaysAgo }
         });
-        
+
         if (deleteResult.deletedCount > 0) {
             console.log(`Cleaned up ${deleteResult.deletedCount} old entries`);
         }
 
-        // Then check if the game exists
+        // check if appid exist
         const game = await collection.findOne({ gameId: appid });
-        
+
         if (game) {
             console.log(`Found existing entry for game: ${game.gameName}`);
-            // Calculate age of the entry
+            // calculate age of the entry
             const ageInDays = Math.floor((Date.now() - game.timestamp) / (24 * 60 * 60 * 1000));
             console.log(`Entry age: ${ageInDays} days`);
             return {
@@ -271,7 +287,6 @@ async function getGameInfo(appid) {
 
 async function summarizeReviews(prompt, gameInfo) {
     try {
-        // Replace placeholders with actual values
         const filledPrompt = prompt
             .replace("$gameName$", gameInfo.gameName)
             .replace("$gameTags$", gameInfo.gameTags.join(', '))
@@ -303,7 +318,7 @@ async function testGetGameInfo(appid) {
     try {
         console.log(`Testing getGameInfo with appid: ${appid}`);
         const gameInfo = await getGameInfo(appid);
-        
+
         console.log('\n=== Game Information ===');
         console.log(`Game Name: ${gameInfo.gameName}`);
         console.log(`Game Tags: ${gameInfo.gameTags.join(', ')}`);
@@ -311,7 +326,7 @@ async function testGetGameInfo(appid) {
         console.log(`Game Description: ${gameInfo.gameDescription}`);
         console.log(`Positive Reviews: ${gameInfo.numPosReviews}`);
         console.log(`Negative Reviews: ${gameInfo.numNegReviews}`);
-        
+
         console.log('\n=== Most Helpful Reviews ===');
         console.log(`Number of helpful reviews (after filtering): ${gameInfo.mostHelpfulReviews.length}`);
         gameInfo.mostHelpfulReviews.forEach((review, index) => {
@@ -320,7 +335,7 @@ async function testGetGameInfo(appid) {
             console.log(`Review: ${review.review}`);
             console.log(`Playtime: ${review.author.playtime_forever} hours`);
         });
-        
+
         console.log('\n=== Recent Reviews ===');
         console.log(`Number of recent reviews (after filtering): ${gameInfo.recentReviews.length}`);
         gameInfo.recentReviews.forEach((review, index) => {
@@ -333,7 +348,7 @@ async function testGetGameInfo(appid) {
         console.log('\n=== GPT Summarize ===');
         const summary = await summarizeReviews(prompt, gameInfo);
         console.log(summary);
-        
+
         console.log('\n==== Inserting to DB ===');
         const finalInfo = {
             gameId: appid,
@@ -341,7 +356,7 @@ async function testGetGameInfo(appid) {
             summary
         };
         await insert(finalInfo);
-        
+
         console.log('\n==== Fetching from DB ===');
         const dbEntry = await exist(appid);
         if (dbEntry) {
@@ -352,16 +367,16 @@ async function testGetGameInfo(appid) {
         } else {
             console.log('No database entry found');
         }
-        
+
     } catch (error) {
         console.error('Test failed:', error.message);
     }
 }
 
-// Test the getGameInfo function directly
+// test
 (async () => {
     try {
-        // Test with Counter-Strike 2
+        // Cs2
         await testGetGameInfo('730');
     } catch (error) {
         console.error('Test failed:', error);
