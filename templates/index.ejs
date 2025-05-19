@@ -5,8 +5,8 @@
     <title>Steam Review Summarizer</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="../public/css/style.css" rel="stylesheet" type="text/css">
-    <script src="../public/js/backend.js" type="text/javascript" defer></script>
+    <link href="/../public/css/style.css" rel="stylesheet" type="text/css">
+    <script src="../backend.js" defer></script>
 </head>
 
 <body>
@@ -19,10 +19,36 @@
     <br>
     Get started by pasting your game's Steam URL below.
     <br>
-    <form>
-        <input type="text" id="in" size="100" rows="1" placeholder="https:/store.steampowered.com/app/app-id-here/app-name-here">
+     
+    <form action="http://localhost:3000/display" method="post">
+        <input type="text" id="in" name="in" size="100" rows="1" placeholder="https:/store.steampowered.com/app/app-id-here/app-name-here">
         <br>
-        <input type="submit" id="submit" onclick="clicked()">
+        <input type="submit" id="submit">
+        <script>
+            window.onsubmit = clicked;
+
+            function clicked() {
+                const pattern = /https:\/\/store.steampowered.com\/app\/(\d+)\/([^]+)/i;
+                let url = document.getElementById("in").value;
+                console.log("URL: " + url)
+                if (url) {
+                    let results = pattern.exec(url);
+                    if (results) {
+                        let appid = Number(results[1]);
+                        let title = results[2];
+                        console.log("AppId: " + appid + ", title: " + title);
+                        return true;
+                    } else {
+                        window.alert("Please enter a url of the form: let pattern = https://store.steampowered.com/app/app-id-here/app-name-here")
+                        return false;
+                    }
+                } else {
+                    window.alert("Please enter a URL");
+                    return false;
+                }
+            }
+
+        </script>
     </form>
 </div>
 

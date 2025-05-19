@@ -70,7 +70,6 @@ h1 {
     height: 20rem;
     
     width: 50rem;
-    /* border: 1rem solid #141e29; */
 }
 
 .reviews {
@@ -121,7 +120,6 @@ h1 {
 
 
 
-/* The animation code */
 @keyframes fade-in {
   from {opacity: 0}
   to {opacity: 1;}

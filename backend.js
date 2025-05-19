@@ -4,6 +4,8 @@ const app = express();
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { OpenAI } = require("openai");
 const portNumber = 3000;
+const bodyParser = require("body-parser");
+const pattern = /https:\/\/store.steampowered.com\/app\/(\d+)\/([^]+)/i;
 
 app.use(express.urlencoded({ extended: false }));
 require("dotenv").config({
@@ -24,7 +26,7 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API
 });
 
-var prompt =
+const prompt =
     `Your mission is to to summarize the reviews about this game. Make sure to use clear, accurate, not overly analytical tone,
     and pay attention for any changes between most recent reviews and most helpful reviews. 
     Ignore the reviews that don't provide related information
@@ -41,45 +43,50 @@ var prompt =
 
 // ejs
 app.set("view engine", "ejs");
-app.set("views", path.resolve(__dirname, "templates"));
-app.use(express.static(path.resolve(__dirname, "public")));
+app.set("views", path.resolve(__dirname, "./templates"));
+app.use(express.static(path.resolve(__dirname, "./public")));
 
 // regexp pattern for extracting app id and name
-const pattern = /https:\/\/store.steampowered.com\/app\/(\d+)\/([^]+)/i;
 
-// clicked function
-function clicked() {
-    let url = document.getElementById("in").value;
-    if (url) {
-        let results = pattern.exec(url);
-        if (results) {
-            let appid = Number(results[1]);
-            let title = results[2];
-            console.log("AppId: " + appid + ", title: " + title);
-        } else {
-            window.alert("Please enter a url of the form: let pattern = https://store.steampowered.com/app/app-id-here/app-name-here")
-        }
-    } else {
-        window.alert("Please enter a URL");
-    }
-}
+// // clicked function
+// function clicked() {
+//     let url = document.getElementById("in").value;
+//     console.log("URL: " + url)
+//     if (url) {
+//         let results = pattern.exec(url);
+//         if (results) {
+//             let appid = Number(results[1]);
+//             let title = results[2];
+//             console.log("AppId: " + appid + ", title: " + title);
+//         } else {
+//             window.alert("Please enter a url of the form: let pattern = https://store.steampowered.com/app/app-id-here/app-name-here")
+//         }
+//     } else {
+//         window.alert("Please enter a URL");
+//     }
+// }
 
 // homepage
 app.get("/", (request, response) => {
     response.render('index');
+    console.log("rendering index page");
 });
 
 // display page
-app.post("/display", (request, response) => {
-    const appid = request.body.id;
 
-    var finalInfo;
+/* Initializes request.body with post information */ 
+app.use(bodyParser.urlencoded({extended:false}));
+
+app.post("/display", async (request, response) => {
+    console.log("received display post");
+    let appid = Number(pattern.exec(request.body.in)[1]);
+
+    var finalInfo = await exist(appid);
     // first get the info of this game
-    if (exist(appid)){
-        finalInfo = lookupDB(appid);
-    } else {
-        const info = getGameInfo(appid);
-        const summary = summarizeReviews(info);
+    if (!finalInfo) {
+        const info = await getGameInfo(appid);
+        console.log(info);
+        const summary = await summarizeReviews(prompt, info);
         finalInfo = {
             gameId: appid,
             gameName: info.gameName,
@@ -102,11 +109,12 @@ app.post("/display", (request, response) => {
         summary: finalInfo.summary,
     }
 
-    response.render('display', variables);
+    // response.render('display', variables);
+    response.render('display');
 })
 
 app.listen(portNumber);
-console.log(`Web server started and running at http://localhost:${portNumber}\n`);
+console.log(`Web server started and running at localhost:${portNumber}\n`);
 const stop = "Stop to shutdown the server:\n";
 process.stdin.setEncoding('utf8');
 process.stdout.write(stop);
@@ -148,28 +156,6 @@ async function insert(gameInfo) {
         return result;
     } catch (e) {
         console.error('Error inserting to database:', e);
-        return null;
-    } finally {
-        await client.close();
-    }
-}
-
-async function lookupDB(appid) {
-    let result;
-    try {
-        await client.connect();
-        console.log(`looking up: email='${email}', gpa=${gpa}`);
-
-        const filter = { appid: { $gte: gpa } };
-        console.log("filter:", filter);
-        const cursor = collection.find(filter);
-        result = await cursor.toArray();
-        console.log("find result (array):", result);
-
-
-        return result;
-    } catch (e) {
-        console.error("error in lookupByEmailOrGPA:", e);
         return null;
     } finally {
         await client.close();
@@ -373,12 +359,13 @@ async function testGetGameInfo(appid) {
     }
 }
 
-// test
-(async () => {
-    try {
-        // Cs2
-        await testGetGameInfo('730');
-    } catch (error) {
-        console.error('Test failed:', error);
-    }
-})();
+// test 
+
+// (async () => {
+//     try {
+//         // Cs2
+//         await testGetGameInfo('730');
+//     } catch (error) {
+//         console.error('Test failed:', error);
+//     }
+// })();
