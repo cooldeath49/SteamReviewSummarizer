@@ -4,9 +4,10 @@ const app = express();
 const router = express.Router(); //somewhere along the top
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const { OpenAI } = require("openai");
-const portNumber = 3000;
+const portNumber = process.env.PORT || 3000;
 const bodyParser = require("body-parser");
 const pattern = /https:\/\/store.steampowered.com\/app\/(\d+)\/([^]+)/i;
+const domain = process.env.PORT ? "https://steamreviewsummarizer.onrender.com" : "http://localhost:" + portNumber
 
 app.use(express.urlencoded({ extended: false }));
 require("dotenv").config({
@@ -49,27 +50,9 @@ app.use(express.static(path.resolve(__dirname, "./public")));
 
 // regexp pattern for extracting app id and name
 
-// // clicked function
-// function clicked() {
-//     let url = document.getElementById("in").value;
-//     console.log("URL: " + url)
-//     if (url) {
-//         let results = pattern.exec(url);
-//         if (results) {
-//             let appid = Number(results[1]);
-//             let title = results[2];
-//             console.log("AppId: " + appid + ", title: " + title);
-//         } else {
-//             window.alert("Please enter a url of the form: let pattern = https://store.steampowered.com/app/app-id-here/app-name-here")
-//         }
-//     } else {
-//         window.alert("Please enter a URL");
-//     }
-// }
-
 // homepage
 app.get("/", (request, response) => {
-    response.render('index');
+    response.render('index', {domain: domain + "/display"});
     console.log("rendering index page");
 });
 
@@ -111,6 +94,7 @@ router.post("/", async (request, response) => { // $Changed$
         numNegReviews: finalInfo.numNegReviews,
         upvotePercentage: upvotePercentage,
         summary: finalInfo.summary,
+        domain: domain
     }
 
     response.render('display', variables);
