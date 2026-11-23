@@ -1,57 +1,47 @@
-<!DOCTYPE html>
 
-<html>
+<!doctype html>
+<html lang="en">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Search Steam games and see what players praise, criticize, and say in recent reviews.">
     <title>Steam Review Summarizer</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="/css/style.css" rel="stylesheet" type="text/css">
-    <script src="/js/backend.js" defer></script>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/search.js" defer></script>
 </head>
-
 <body>
-<div class="title"><h1>STEAM REVIEW SUMMARIZER</h1></div>
-<div class="main">
-    <h2 class="subtitle">Realistic, concise, accurate.</h2>
-    <h3>Summarizes reviews of a Steam game into an understandable and readable description.</h3>
-    <i>Parses reviews written up to 1 year ago</i>
-    <br>
-    <br>
-    Get started by pasting your game's Steam URL below.
-    <br>
-     
-    <form action= <%- domain %> method="post">
-        <input type="text" id="in" name="in" size="100" rows="1" placeholder="https://store.steampowered.com/app/app-id-here/app-name-here">
-        <br>
-        <input type="submit" id="submit">
-        <script>
-            window.onsubmit = clicked;
+<%- include("partials/header", { showHomeLink: false }) %>
+<main class="shell home">
+    <section class="intro" aria-labelledby="page-title">
+        <h1 id="page-title">What are players<br class="intro-break"> <span>saying?</span></h1>
+        <p>See what Steam players praise and criticize, with links to their reviews.</p>
+    </section>
 
-            function clicked() {
-                const pattern = /https:\/\/store.steampowered.com\/app\/(\d+)\/([^]+)/i;
-                let url = document.getElementById("in").value;
-                console.log("URL: " + url)
-                if (url) {
-                    let results = pattern.exec(url);
-                    if (results) {
-                        let appid = Number(results[1]);
-                        let title = results[2];
-                        console.log("AppId: " + appid + ", title: " + title);
-                        return true;
-                    } else {
-                        window.alert("Please enter a url of the form: let pattern = https://store.steampowered.com/app/app-id-here/app-name-here")
-                        return false;
-                    }
-                } else {
-                    window.alert("Please enter a URL");
-                    return false;
-                }
-            }
-
-        </script>
+    <form class="panel search-panel" action="/display" method="post">
+        <label for="in">Find a Steam game</label>
+        <div class="search-row">
+            <input type="text" id="in" name="in" required maxlength="512" autocomplete="off"
+                   spellcheck="false" placeholder="e.g. Portal 2"
+                   value="<%= input %>" aria-describedby="search-hint<%= error ? ' search-error' : '' %>"
+                   <% if (error) { %>aria-invalid="true"<% } %>>
+            <button class="button button-primary" type="submit">Search or analyze <span aria-hidden="true">→</span></button>
+        </div>
+        <% if (error) { %><p class="form-error" id="search-error" role="alert"><%= error %></p><% } %>
+        <div class="search-meta">
+            <p id="search-hint">Enter a game name, Steam App ID, or store link.</p>
+            <button class="text-button" type="button" data-example hidden>Try Portal 2 <span aria-hidden="true">↗</span></button>
+        </div>
+        <p class="search-status" role="status" data-search-status><%= searched ? (games.length ? "Select a game to analyze." : "No matches. Try another name or a Steam App ID.") : "" %></p>
+        <ul class="search-results" aria-label="Matching Steam games" data-game-results <%= games.length ? "" : "hidden" %>>
+            <% for (const game of games) { %>
+                <li><button type="submit" name="appId" value="<%= game.id %>">
+                    <img src="https://cdn.akamai.steamstatic.com/steam/apps/<%= game.id %>/header.jpg" alt="" width="92" height="43">
+                    <span><b><%= game.name %></b><small>App ID <%= game.id %></small></span>
+                    <span aria-hidden="true">→</span>
+                </button></li>
+            <% } %>
+        </ul>
     </form>
-</div>
-
+</main>
 </body>
-
 </html>

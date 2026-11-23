@@ -1,0 +1,11 @@
+
+{$SITE_ADDRESS} {
+    encode zstd gzip
+
+    reverse_proxy app:3000 {
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 75s
+        }
+    }
+}

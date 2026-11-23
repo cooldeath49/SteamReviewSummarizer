@@ -1,57 +1,142 @@
-<!DOCTYPE html>
 
-<html>
-    <head>
-        <title>Display</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="/css/style.css" rel="stylesheet" type="text/css">
-        <script src="/js/backend.js" defer></script>
-    </head>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= gameName %> · Steam Review Summarizer</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/analysis.js" defer></script>
+</head>
+<body>
+<%- include("partials/header", { showHomeLink: true }) %>
+<main class="shell results">
+    <div class="result-actions">
+        <a class="back-link" href="/">← Back to search</a>
+        <button class="text-button" type="button" data-copy-link hidden>Copy link</button>
+        <span class="copy-status" role="status" data-copy-status></span>
+    </div>
 
-    <body>
-        <div class="title"><h1>STEAM REVIEW SUMMARIZER</h1></div>
-        <div class="main">
-            <h1 class="game_title fade"><%- gameName %></h1>
-            <br>
-            <img class="game_img fade" src="https://cdn.akamai.steamstatic.com/steam/apps/<%= appid %>/header.jpg" alt="Game front page image">
-            <br>
-            <div class="desc_div"><i>
-                <span class="desc"><%- gameDescription %></span>
-                <br></i>
-                <span class="dev"><%- gameTags %></span>
-            </div>
-            
-            <br>
-            <div class="graph_reviews">
-                <div class="reviews">
-                    <div class="stats"><b>STATISTICS</b></div>
-                    TOTAL REVIEWS: <%- totalReviews %>
-                    <br>
-                    Positive: <%- numPosReviews %>
-                    <br>
-                    Negative: <%- numNegReviews %>
-                    <br>
-                    Upvote Percentage: <%- upvotePercentage %>%
-                    <br>
-                </div>
-                <div class="iframe_div">
-                    <iframe src="https://steamdb.info/embed/?appid=<%- appid %>" loading="lazy" class="iframe"></iframe>
-                </div>
-            </div>
-            <br>
-            <div class="summary">
-                <div class="summary_title"><b>SUMMARY</b></div>
-                <div class="summary_text">
-                    <%- summary %>
-                </div>
-            </div>
-            <form action= <%- domain %> method="get">
-            <input type="submit" value="Back" id="back">
-            </form>
-
+    <section class="panel game" aria-labelledby="game-title">
+        <div class="game-cover">
+            <img src="https://cdn.akamai.steamstatic.com/steam/apps/<%= appid %>/header.jpg"
+                 alt="" width="460" height="215">
         </div>
+        <div class="game-info">
+            <h1 id="game-title"><%= gameName %></h1>
+            <% if (gameTags.length) { %>
+                <ul class="tags" aria-label="Genres">
+                    <% for (const genre of gameTags) { %><li><%= genre %></li><% } %>
+                </ul>
+            <% } %>
+            <% if (gameDescription) { %><p class="game-description"><%= gameDescription %></p><% } %>
+            <a class="text-link" href="<%= storeUrl %>">View on Steam <span aria-hidden="true">↗</span></a>
+        </div>
+    </section>
 
-    </body>
+    <div class="review-grid">
+        <section class="panel stats-panel" aria-labelledby="stats-title">
+            <h2 id="stats-title">Lifetime Steam reviews</h2>
+            <% if (!totals?.total) { %>
+                <p class="stat-empty"><%= totals ? "Steam has no counted reviews for this game yet." : "Steam did not provide review totals for this game." %></p>
+            <% } else { %>
+                <div class="rating">
+                    <strong><%= totals.percentage %>%</strong>
+                    <div><b><%= gameRating || "Positive reviews" %></b><span><%= totals.total.toLocaleString("en-US") %> total reviews</span></div>
+                </div>
+                <meter min="0" max="100" value="<%= totals.percentage %>" aria-label="Percentage of lifetime positive reviews"><%= totals.percentage %>%</meter>
+                <dl class="counts">
+                    <div><dt><span class="dot positive" aria-hidden="true"></span>Positive</dt><dd><%= totals.positive.toLocaleString("en-US") %></dd></div>
+                    <div><dt><span class="dot negative" aria-hidden="true"></span>Negative</dt><dd><%= totals.negative.toLocaleString("en-US") %></dd></div>
+                </dl>
+            <% } %>
+        </section>
+        <section class="panel widget-panel" aria-labelledby="widget-title">
+            <div class="widget-heading">
+                <h2 id="widget-title">SteamDB</h2>
+                <a class="text-link" href="https://steamdb.info/app/<%= appid %>/">Open on SteamDB <span aria-hidden="true">↗</span></a>
+            </div>
+            <iframe src="https://steamdb.info/embed/?appid=<%= appid %>" title="SteamDB details for <%= gameName %>" loading="lazy"></iframe>
+        </section>
+    </div>
 
+    <section class="panel summary-panel" aria-labelledby="comparison-title">
+        <h2 id="comparison-title">Recent vs. earlier reviews</h2>
+        <% if (comparison) { %>
+            <% const formatDate = value => new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }); %>
+            <p class="section-note">30-day window ending <time datetime="<%= comparison.end %>"><%= formatDate(comparison.end) %></time> (UTC). Both periods use Steam’s review totals.</p>
+            <div class="period-grid">
+                <% for (const [label, period] of [["Last 30 days", comparison.recent], ["Before the last 30 days", comparison.historical]]) { %>
+                    <div class="period">
+                        <h3><%= label %></h3>
+                        <% if (period.total) { %>
+                            <p><strong><%= period.percentage %>%</strong> positive</p>
+                            <meter min="0" max="100" value="<%= period.percentage %>" aria-label="<%= label %> positive percentage"><%= period.percentage %>%</meter>
+                            <p class="section-note"><%= period.total.toLocaleString("en-US") %> reviews · <%= period.positive.toLocaleString("en-US") %> positive · <%= period.negative.toLocaleString("en-US") %> negative</p>
+                        <% } else { %>
+                            <p class="section-note">0 reviews in this period</p>
+                        <% } %>
+                    </div>
+                <% } %>
+            </div>
+            <% if (comparison.recent.total > 0 && comparison.recent.total < 20) { %>
+                <p class="section-note">The recent period has few reviews, so a handful of votes can shift its percentage.</p>
+            <% } %>
+        <% } else { %>
+            <p class="section-note"><%= analysis ? "Steam did not provide a consistent set of counts for both periods." : "This comparison will be available when the analysis is refreshed." %></p>
+        <% } %>
+    </section>
+
+    <section class="panel summary-panel" aria-labelledby="summary-title">
+        <div class="summary-heading">
+            <h2 id="summary-title">Review summary</h2>
+            <span>Updated <time datetime="<%= updatedAt.toISOString() %>"><%= updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) %></time></span>
+        </div>
+        <% if (refreshFailed) { %><p class="section-note">The last refresh could not finish. The previous analysis is shown below.</p><% } %>
+        <% if (analysis && sampleCounts) { %>
+            <p class="section-note"><%= sampleCounts.unique %> unique reviews sampled · <%= sampleCounts.helpful %> helpful · <%= sampleCounts.recent %> recent. A review can appear in both groups.</p>
+            <% if (sampleCounts.unique === 0) { %>
+                <p class="summary-copy">Steam did not return enough review text with verifiable source links to summarize.</p>
+            <% } else { %>
+                <div class="findings">
+                    <% for (const [label, points] of [["What players praise", analysis.strengths], ["What players criticize", analysis.weaknesses], ["What recent reviews say", analysis.recent]]) { %>
+                        <section class="finding-group">
+                            <h3><%= label %></h3>
+                            <% if (!points.length) { %>
+                                <p class="section-note">No supported finding in this sample.</p>
+                            <% } else { %>
+                                <ul class="finding-list">
+                                    <% for (const point of points) { %>
+                                        <li>
+                                            <p><%= point.text %></p>
+                                            <details>
+                                                <summary><%= point.sources.length %> source <%= point.sources.length === 1 ? "review" : "reviews" %></summary>
+                                                <% for (const source of point.sources) { %>
+                                                    <blockquote>
+                                                        <p><%= source.excerpt %></p>
+                                                        <a class="text-link" href="<%= source.url %>">Read Steam review <span aria-hidden="true">↗</span></a>
+                                                        <span class="section-note"><%= source.recommended ? "Recommended" : "Not recommended" %> · <time datetime="<%= source.date %>"><%= source.date %></time></span>
+                                                    </blockquote>
+                                                <% } %>
+                                            </details>
+                                        </li>
+                                    <% } %>
+                                </ul>
+                            <% } %>
+                        </section>
+                    <% } %>
+                </div>
+            <% } %>
+        <% } else { %>
+            <p class="summary-copy"><%= summary %></p>
+            <p class="section-note">Refresh this older summary to include review links.</p>
+        <% } %>
+        <% if (refreshAvailable) { %>
+            <form class="refresh-form" action="/display" method="post">
+                <button class="button button-secondary" type="submit" name="appId" value="<%= appid %>">Refresh analysis</button>
+            </form>
+        <% } %>
+    </section>
+</main>
+</body>
 </html>
