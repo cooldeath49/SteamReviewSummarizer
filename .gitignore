@@ -1,2 +1,7 @@
 
 .env
+.env.*
+!.env.example
+node_modules/
+.idea/
+npm-debug.log*

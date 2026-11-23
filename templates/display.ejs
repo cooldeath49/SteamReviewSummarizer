@@ -1,57 +1,67 @@
-<!DOCTYPE html>
 
-<html>
-    <head>
-        <title>Display</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="/css/style.css" rel="stylesheet" type="text/css">
-        <script src="/js/backend.js" defer></script>
-    </head>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= gameName %> · Steam Review Summarizer</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<%- include("partials/header", { showHomeLink: true }) %>
+<main class="shell results">
+    <a class="back-link" href="/">← Back to search</a>
 
-    <body>
-        <div class="title"><h1>STEAM REVIEW SUMMARIZER</h1></div>
-        <div class="main">
-            <h1 class="game_title fade"><%- gameName %></h1>
-            <br>
-            <img class="game_img fade" src="https://cdn.akamai.steamstatic.com/steam/apps/<%= appid %>/header.jpg" alt="Game front page image">
-            <br>
-            <div class="desc_div"><i>
-                <span class="desc"><%- gameDescription %></span>
-                <br></i>
-                <span class="dev"><%- gameTags %></span>
-            </div>
-            
-            <br>
-            <div class="graph_reviews">
-                <div class="reviews">
-                    <div class="stats"><b>STATISTICS</b></div>
-                    TOTAL REVIEWS: <%- totalReviews %>
-                    <br>
-                    Positive: <%- numPosReviews %>
-                    <br>
-                    Negative: <%- numNegReviews %>
-                    <br>
-                    Upvote Percentage: <%- upvotePercentage %>%
-                    <br>
-                </div>
-                <div class="iframe_div">
-                    <iframe src="https://steamdb.info/embed/?appid=<%- appid %>" loading="lazy" class="iframe"></iframe>
-                </div>
-            </div>
-            <br>
-            <div class="summary">
-                <div class="summary_title"><b>SUMMARY</b></div>
-                <div class="summary_text">
-                    <%- summary %>
-                </div>
-            </div>
-            <form action= <%- domain %> method="get">
-            <input type="submit" value="Back" id="back">
-            </form>
-
+    <section class="panel game" aria-labelledby="game-title">
+        <div class="game-cover">
+            <img src="https://cdn.akamai.steamstatic.com/steam/apps/<%= appid %>/header.jpg"
+                 alt="" width="460" height="215">
         </div>
+        <div class="game-info">
+            <h1 id="game-title"><%= gameName %></h1>
+            <% if (gameTags.length) { %>
+                <ul class="tags" aria-label="Genres">
+                    <% for (const genre of gameTags) { %><li><%= genre %></li><% } %>
+                </ul>
+            <% } %>
+            <% if (gameDescription) { %><p class="game-description"><%= gameDescription %></p><% } %>
+            <a class="text-link" href="<%= storeUrl %>">View on Steam <span aria-hidden="true">↗</span></a>
+        </div>
+    </section>
 
-    </body>
+    <div class="review-grid">
+        <section class="panel stats-panel" aria-labelledby="stats-title">
+            <h2 id="stats-title">Review statistics</h2>
+            <% if (upvotePercentage === null) { %>
+                <p class="stat-empty">Steam has no review totals for this game yet.</p>
+            <% } else { %>
+                <div class="rating">
+                    <strong><%= upvotePercentage %>%</strong>
+                    <div><b><%= gameRating || "Positive reviews" %></b><span><%= totalReviews.toLocaleString("en-US") %> total reviews</span></div>
+                </div>
+                <meter min="0" max="100" value="<%= upvotePercentage %>" aria-label="Percentage of positive reviews"><%= upvotePercentage %>%</meter>
+                <dl class="counts">
+                    <div><dt><span class="dot positive" aria-hidden="true"></span>Positive</dt><dd><%= numPosReviews.toLocaleString("en-US") %></dd></div>
+                    <div><dt><span class="dot negative" aria-hidden="true"></span>Negative</dt><dd><%= numNegReviews.toLocaleString("en-US") %></dd></div>
+                </dl>
+            <% } %>
+        </section>
+        <section class="panel widget-panel" aria-labelledby="widget-title">
+            <div class="widget-heading">
+                <h2 id="widget-title">SteamDB</h2>
+                <a class="text-link" href="https://steamdb.info/app/<%= appid %>/">Open on SteamDB <span aria-hidden="true">↗</span></a>
+            </div>
+            <iframe src="https://steamdb.info/embed/?appid=<%= appid %>" title="SteamDB details for <%= gameName %>" loading="lazy"></iframe>
+        </section>
+    </div>
 
+    <section class="panel summary-panel" aria-labelledby="summary-title">
+        <div class="summary-heading">
+            <h2 id="summary-title">Review summary</h2>
+            <span>Updated <time datetime="<%= updatedAt.toISOString() %>"><%= updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) %></time></span>
+        </div>
+        <p class="summary-copy"><%= summary %></p>
+    </section>
+</main>
+</body>
 </html>
