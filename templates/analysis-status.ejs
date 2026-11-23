@@ -1,0 +1,44 @@
+
+<%
+const states = {
+    queued: ["Analysis queued", "Your request is in the queue. You can close this page and return using the same link."],
+    running: ["Analyzing Steam reviews", "We’re reading recent and helpful reviews. You can close this page and return using the same link."],
+    failed: ["Couldn’t finish the analysis", "Steam or the analysis service was unavailable. You can retry the same game."],
+    missing: ["Game not found", "Steam did not return store details for this App ID. Check the ID or search for another game."],
+    unrequested: ["No analysis yet", "Start an analysis for this Steam App ID to create a result at this link."]
+};
+const [heading, message] = states[status] || states.failed;
+const pending = status === "queued" || status === "running";
+%>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= heading %> · Steam Review Summarizer</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/js/analysis.js" defer></script>
+</head>
+<body>
+<%- include("partials/header", { showHomeLink: true }) %>
+<main class="shell error-page">
+    <section class="panel error-panel" aria-labelledby="analysis-heading" <% if (pending) { %>data-status-url="/api/games/<%= appId %>/status" data-status="<%= status %>"<% } %>>
+        <p class="app-label">Steam App ID <%= appId %></p>
+        <h1 id="analysis-heading" aria-live="polite"><%= heading %></h1>
+        <p data-analysis-message><%= message %></p>
+        <div class="status-actions">
+            <% if (pending) { %>
+                <a class="button button-secondary" href="/games/<%= appId %>">Check status</a>
+                <button class="button button-secondary" type="button" data-copy-link hidden>Copy link</button>
+            <% } else if (status === "failed" || status === "unrequested") { %>
+                <form action="/display" method="post">
+                    <button class="button button-primary" type="submit" name="appId" value="<%= appId %>"><%= status === "failed" ? "Retry analysis" : "Start analysis" %></button>
+                </form>
+            <% } %>
+            <a class="back-link" href="/">Back to search</a>
+        </div>
+        <span class="copy-status" role="status" data-copy-status></span>
+    </section>
+</main>
+</body>
+</html>

@@ -9,7 +9,7 @@ services:
       MONGO_CONNECTION_STRING: ${MONGO_CONNECTION_STRING:?Set MONGO_CONNECTION_STRING in .env}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_API: ${OPENAI_API:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-nano}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
       ANALYSES_PER_MINUTE: ${ANALYSES_PER_MINUTE:-10}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(res => process.exit(res.ok ? 0 : 1), () => process.exit(1))"]

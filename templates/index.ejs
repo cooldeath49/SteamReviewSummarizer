@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Get a concise summary of recent and helpful reviews for any Steam game.">
+    <meta name="description" content="Search Steam games and see what players praise, criticize, and say in recent reviews.">
     <title>Steam Review Summarizer</title>
     <link rel="stylesheet" href="/css/style.css">
     <script src="/js/search.js" defer></script>
@@ -14,24 +14,33 @@
 <main class="shell home">
     <section class="intro" aria-labelledby="page-title">
         <h1 id="page-title">What are players<br class="intro-break"> <span>saying?</span></h1>
-        <p>Get a concise summary of helpful and recent Steam reviews, with the numbers alongside it.</p>
+        <p>See what Steam players praise and criticize, with links to their reviews.</p>
     </section>
 
     <form class="panel search-panel" action="/display" method="post">
-        <label for="in">Steam store link</label>
+        <label for="in">Find a Steam game</label>
         <div class="search-row">
-            <input type="url" id="in" name="in" required maxlength="512" inputmode="url"
-                   autocapitalize="none" spellcheck="false" placeholder="https://store.steampowered.com/app/..."
+            <input type="text" id="in" name="in" required maxlength="512" autocomplete="off"
+                   spellcheck="false" placeholder="e.g. Portal 2"
                    value="<%= input %>" aria-describedby="search-hint<%= error ? ' search-error' : '' %>"
                    <% if (error) { %>aria-invalid="true"<% } %>>
-            <button class="button button-primary" type="submit"><span data-button-label>Summarize reviews</span><span aria-hidden="true">→</span></button>
+            <button class="button button-primary" type="submit">Search or analyze <span aria-hidden="true">→</span></button>
         </div>
         <% if (error) { %><p class="form-error" id="search-error" role="alert"><%= error %></p><% } %>
         <div class="search-meta">
-            <p id="search-hint">Paste the URL from a game’s Steam store page.</p>
+            <p id="search-hint">Enter a game name, Steam App ID, or store link.</p>
             <button class="text-button" type="button" data-example hidden>Try Portal 2 <span aria-hidden="true">↗</span></button>
         </div>
-        <p class="loading" role="status" hidden>Fetching reviews and preparing your summary. This can take about a minute.</p>
+        <p class="search-status" role="status" data-search-status><%= searched ? (games.length ? "Select a game to analyze." : "No matches. Try another name or a Steam App ID.") : "" %></p>
+        <ul class="search-results" aria-label="Matching Steam games" data-game-results <%= games.length ? "" : "hidden" %>>
+            <% for (const game of games) { %>
+                <li><button type="submit" name="appId" value="<%= game.id %>">
+                    <img src="https://cdn.akamai.steamstatic.com/steam/apps/<%= game.id %>/header.jpg" alt="" width="92" height="43">
+                    <span><b><%= game.name %></b><small>App ID <%= game.id %></small></span>
+                    <span aria-hidden="true">→</span>
+                </button></li>
+            <% } %>
+        </ul>
     </form>
 </main>
 </body>
